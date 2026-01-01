@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pro Tic Tac Toe | Adi</title>
+
+<style>
+:root{
+  --neon:#38f9ff;
+  --x:#39ff14;
+  --o:#ff2dfd;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:#0b0f14;
+  font-family:Segoe UI,Arial,sans-serif;
+  color:white;
+}
+
+.game{
+  background:#111827;
+  padding:22px;
+  border-radius:20px;
+  box-shadow:0 0 35px var(--neon);
+  max-width:360px;
+  width:100%;
+  text-align:center;
+}
+
+h1{
+  margin:0 0 6px;
+  color:var(--neon);
+  letter-spacing:2px;
+}
+
+#status{
+  font-size:14px;
+  margin-bottom:10px;
+}
+
+/* CONTROLS */
+.controls{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+
+select{
+  padding:7px 10px;
+  border:none;
+  border-radius:10px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+/* BOARD */
+.board{
+  display:grid;
+  grid-template-columns:repeat(3,90px);
+  gap:8px;
+  background:var(--neon);
+  padding:8px;
+  border-radius:16px;
+  margin:10px auto;
+}
+
+.cell{
+  width:90px;
+  height:90px;
+  background:#0b0f14;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:56px;
+  border-radius:12px;
+  cursor:pointer;
+}
+
+.cell.x{
+  color:var(--x);
+  text-shadow:0 0 12px var(--x);
+}
+
+.cell.o{
+  color:var(--o);
+  text-shadow:0 0 12px var(--o);
+}
+
+/* WIN */
+.cell.win{
+  animation:pulse .7s infinite alternate;
+}
+@keyframes pulse{
+  to{transform:scale(1.15)}
+}
+
+/* SCORE */
+.score{
+  display:flex;
+  justify-content:space-between;
+  margin-top:10px;
+  font-size:14px;
+}
+
+/* BUTTON */
+button{
+  margin-top:12px;
+  padding:9px 18px;
+  border:none;
+  border-radius:12px;
+  background:var(--neon);
+  color:black;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+/* FOOTER – PRO LOOK */
+footer{
+  margin-top:8px;
+  font-size:12px;
+  color:#9afcff;
+  letter-spacing:1px;
+  text-shadow:0 0 6px rgba(56,249,255,0.6);
+  opacity:0.9;
+}
+
+/* MOBILE */
+@media(max-width:420px){
+  .board{grid-template-columns:repeat(3,75px)}
+  .cell{width:75px;height:75px;font-size:44px}
+}
+</style>
+</head>
+
+<body>
+
+<div class="game">
+  <h1>TIC TAC TOE</h1>
+  <div id="status">Your Turn (X)</div>
+
+  <div class="controls">
+    <select id="mode">
+      <option value="ai">🤖 vs Computer</option>
+      <option value="player">👥 Two Player</option>
+    </select>
+
+    <select onchange="changeTheme(this.value)">
+      <option value="blue">🔵 Blue</option>
+      <option value="pink">💗 Pink</option>
+      <option value="green">🟢 Green</option>
+    </select>
+  </div>
+
+  <div class="board">
+    <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+    <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+    <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+  </div>
+
+  <div class="score">
+    <div>❌ X: <span id="xScore">0</span></div>
+    <div>⭕ O: <span id="oScore">0</span></div>
+  </div>
+
+  <button onclick="resetGame()">Restart</button>
+  <footer>Created by <b>oheyadi</b></footer>
+</div>
+
+<script>
+const cells=document.querySelectorAll(".cell");
+const statusText=document.getElementById("status");
+const xScoreText=document.getElementById("xScore");
+const oScoreText=document.getElementById("oScore");
+const modeSelect=document.getElementById("mode");
+
+let board=["","","","","","","","",""];
+let current="X",active=true;
+let xWins=0,oWins=0;
+
+const wins=[
+ [0,1,2],[3,4,5],[6,7,8],
+ [0,3,6],[1,4,7],[2,5,8],
+ [0,4,8],[2,4,6]
+];
+
+cells.forEach((c,i)=>{
+  c.onclick=()=>{
+    if(!active||board[i])return;
+
+    move(i,current);
+    if(check(current))return;
+
+    if(modeSelect.value==="ai"){
+      setTimeout(aiMove,250);
+    }else{
+      current=current==="X"?"O":"X";
+      statusText.textContent=`${current}'s Turn`;
+    }
+  }
+});
+
+function move(i,player){
+  board[i]=player;
+  cells[i].textContent=player;
+  cells[i].classList.add(player==="X"?"x":"o");
+}
+
+function aiMove(){
+  let best=minimax(board,"O").index;
+  move(best,"O");
+  check("O");
+  current="X";
+}
+
+function minimax(b,player){
+  let empty=b.map((v,i)=>v===""?i:null).filter(v=>v!==null);
+
+  if(checkWinner(b,"X")) return {score:-10};
+  if(checkWinner(b,"O")) return {score:10};
+  if(empty.length===0) return {score:0};
+
+  let moves=[];
+  for(let i of empty){
+    let move={index:i};
+    b[i]=player;
+    let result=minimax(b,player==="O"?"X":"O");
+    move.score=result.score;
+    b[i]="";
+    moves.push(move);
+  }
+
+  let best;
+  if(player==="O"){
+    let max=-1000;
+    for(let m of moves) if(m.score>max){max=m.score;best=m}
+  }else{
+    let min=1000;
+    for(let m of moves) if(m.score<min){min=m.score;best=m}
+  }
+  return best;
+}
+
+function check(player){
+  for(let p of wins){
+    if(p.every(i=>board[i]===player)){
+      active=false;
+      p.forEach(i=>cells[i].classList.add("win"));
+      statusText.textContent=player+" Wins!";
+      player==="X"?xScoreText.textContent=++xWins:oScoreText.textContent=++oWins;
+      return true;
+    }
+  }
+  if(board.every(c=>c)){
+    active=false;
+    statusText.textContent="Draw!";
+  }
+  return false;
+}
+
+function checkWinner(b,p){
+  return wins.some(w=>w.every(i=>b[i]===p));
+}
+
+function resetGame(){
+  board.fill("");
+  cells.forEach(c=>{c.textContent="";c.className="cell"});
+  active=true;
+  current="X";
+  statusText.textContent="Your Turn (X)";
+}
+
+function changeTheme(t){
+  if(t==="blue")set("--neon","#38f9ff");
+  if(t==="pink")set("--neon","#ff2dfd");
+  if(t==="green")set("--neon","#39ff14");
+}
+function set(v,val){
+  document.documentElement.style.setProperty(v,val);
+}
+</script>
+
+</body>
+</html>
